@@ -32,10 +32,11 @@ class DeterministicProvider(AIProvider):
 
 
 class OpenAICompatibleProvider(AIProvider):
-    name = "openai-compatible"
-
-    def __init__(self, base_url: str, api_key: str, model: str):
-        self.base_url, self.api_key, self.model = base_url.rstrip("/"), api_key, model
+    def __init__(self, name: str, base_url: str, api_key: str, model: str):
+        self.name = name
+        self.base_url = base_url.rstrip("/")
+        self.api_key = api_key
+        self.model = model
 
     async def answer(self, question: str, evidence: list[dict]) -> str:
         payload = {
@@ -44,7 +45,8 @@ class OpenAICompatibleProvider(AIProvider):
                 {"role": "system", "content": SYSTEM},
                 {"role": "user", "content": f"Question: {question}\nEvidence: {evidence}"},
             ],
-            "temperature": 0,
+            "temperature": 0.1,
+            "max_tokens": 600,
         }
         headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
         async with httpx.AsyncClient(timeout=20) as client:
@@ -55,12 +57,25 @@ class OpenAICompatibleProvider(AIProvider):
 
 def provider() -> AIProvider:
     choice = os.getenv("PERIMETRYX_AI_PROVIDER", "deterministic").lower()
+    if choice == "groq" and os.getenv("GROQ_API_KEY"):
+        return OpenAICompatibleProvider(
+            "groq",
+            "https://api.groq.com/openai/v1",
+            os.environ["GROQ_API_KEY"],
+            os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
+        )
     if choice == "openai" and os.getenv("OPENAI_API_KEY"):
         return OpenAICompatibleProvider(
-            "https://api.openai.com/v1", os.environ["OPENAI_API_KEY"], os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+            "openai",
+            "https://api.openai.com/v1",
+            os.environ["OPENAI_API_KEY"],
+            os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
         )
     if choice == "ollama":
         return OpenAICompatibleProvider(
-            os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1"), "", os.getenv("OLLAMA_MODEL", "llama3.2")
+            "ollama",
+            os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
+            os.getenv("OLLAMA_API_KEY", ""),
+            os.getenv("OLLAMA_MODEL", "llama3.2"),
         )
     return DeterministicProvider()

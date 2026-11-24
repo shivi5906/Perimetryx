@@ -2,14 +2,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .ai import provider
-from .schemas import AssetInput, CopilotQuestion, DomainCreate, FindingInput, ScanCreate
+from .analysis import findings_for_observation
+from .pipeline import Observation, collect
+from .schemas import AssetInput, CopilotQuestion, DomainCreate, FindingInput, ScanCreate, ScopeConfig
 from .scope_guard import allowed, normalize
 from .scoring import score
+from .services import add_finding as store_finding
+from .services import audit, finish_scan, ingest_observation
 from .store import db, dump, init, load, now, rows
 
 app = FastAPI(title="Perimetryx API", version="2.0.0")
@@ -72,12 +76,55 @@ def get_domain(domain_id: int):
     return domain_or_404(domain_id)
 
 
+async def execute_scan(scan_id: int) -> None:
+    scan = scan_or_404(scan_id)
+    domain = domain_or_404(scan["domain_id"])
+    scope = ScopeConfig(**domain["scope"])
+    with db() as conn:
+        conn.execute("UPDATE scans SET status = 'running' WHERE id = ?", (scan_id,))
+    audit(scan_id, "scan_running", domain["root_domain"], "dry-run" if scan["dry_run"] else "authorized")
+
+    try:
+        if scan["dry_run"]:
+            observations = [
+                Observation(
+                    hostname=domain["root_domain"],
+                    source="scope-preview",
+                    environment="unknown",
+                    status_code=None,
+                    title=None,
+                    headers={},
+                    addresses=[],
+                    scheme=None,
+                )
+            ]
+        else:
+            observations = await collect(domain["root_domain"], scope)
+
+        for observation in observations:
+            asset_id = ingest_observation(scan_id, domain["id"], observation)
+            audit(scan_id, "asset_recorded", observation.hostname, observation.source)
+            for finding in findings_for_observation(
+                observation.hostname,
+                observation.scheme,
+                observation.status_code,
+                observation.headers,
+            ):
+                store_finding(scan_id, asset_id, finding)
+        stats = finish_scan(scan_id, "completed")
+        audit(scan_id, "scan_completed", domain["root_domain"], dump(stats))
+    except Exception as error:
+        message = str(error)[:500]
+        finish_scan(scan_id, "failed", message)
+        audit(scan_id, "scan_failed", domain["root_domain"], message)
+
+
 @app.post("/api/domains/{domain_id}/scans", status_code=201)
-def create_scan(domain_id: int, body: ScanCreate):
+def create_scan(domain_id: int, body: ScanCreate, background_tasks: BackgroundTasks):
     domain = domain_or_404(domain_id)
     with db() as conn:
         cursor = conn.execute(
-            "INSERT INTO scans(domain_id, status, dry_run, started_at) VALUES (?, 'running', ?, ?)",
+            "INSERT INTO scans(domain_id, status, dry_run, started_at) VALUES (?, 'queued', ?, ?)",
             (domain_id, body.dry_run, now()),
         )
         scan_id = cursor.lastrowid
@@ -85,7 +132,15 @@ def create_scan(domain_id: int, body: ScanCreate):
             "INSERT INTO audit_events(scan_id, at, action, target, result) VALUES (?, ?, 'scan_started', ?, ?)",
             (scan_id, now(), domain["root_domain"], "dry-run" if body.dry_run else "authorized"),
         )
-        return {"id": scan_id, "status": "running", "dry_run": body.dry_run}
+    background_tasks.add_task(execute_scan, scan_id)
+    return {"id": scan_id, "status": "queued", "dry_run": body.dry_run}
+
+
+@app.get("/api/scans/{scan_id}")
+def get_scan(scan_id: int):
+    scan = scan_or_404(scan_id)
+    scan["stats"] = load(scan.pop("stats_json"))
+    return scan
 
 
 @app.post("/api/scans/{scan_id}/assets", status_code=201)
@@ -214,7 +269,7 @@ def graph(scan_id: int):
     with db() as conn:
         data = rows(
             conn.execute(
-                """SELECT a.id, a.hostname, a.environment, o.cname, r.total, r.band FROM scan_assets sa JOIN assets a ON a.id=sa.asset_id
+                """SELECT a.id, a.hostname, a.environment, o.cname, o.headers_json, r.total, r.band FROM scan_assets sa JOIN assets a ON a.id=sa.asset_id
         LEFT JOIN observations o ON o.asset_id=a.id AND o.scan_id=sa.scan_id LEFT JOIN risk_scores r ON r.asset_id=a.id AND r.scan_id=sa.scan_id WHERE sa.scan_id=?""",
                 (scan_id,),
             )
@@ -228,6 +283,11 @@ def graph(scan_id: int):
             node = f"cname-{asset['cname']}"
             nodes.append({"id": node, "label": asset["cname"], "type": "cname"})
             edges.append({"source": f"asset-{asset['id']}", "target": node, "label": "CNAME"})
+        headers = load(asset["headers_json"])
+        for address in filter(None, headers.get("x-perimetryx-addresses", "").split(",")):
+            node = f"ip-{address}"
+            nodes.append({"id": node, "label": address, "type": "ip"})
+            edges.append({"source": f"asset-{asset['id']}", "target": node, "label": "RESOLVES"})
     return {"nodes": nodes, "edges": edges}
 
 

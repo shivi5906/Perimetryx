@@ -1,1 +1,170 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Perimetryx</title><link rel="stylesheet" href="/styles.css"></head><body><main><header><div><p class="eyebrow">AUTHORIZED ATTACK SURFACE INTELLIGENCE</p><h1>Perimetryx <span>v2</span></h1></div><div id="health">● API connecting</div></header><section class="hero"><h2>Evidence before assertion.</h2><p>Map authorized assets, explain deterministic risk, identify meaningful changes, and cite evidence for every decision.</p></section><section class="controls"><label>Scan ID <input id="scanId" type="number" min="1" placeholder="e.g. 1"></label><button id="load">Load scan</button><button class="secondary" id="seed">Load safe demo</button></section><p id="message" role="status"></p><section class="metrics" id="metrics"><article><small>ASSETS</small><b>—</b></article><article><small>FINDINGS</small><b>—</b></article><article><small>HIGH RISK</small><b>—</b></article><article><small>NEW ASSETS</small><b>—</b></article></section><section class="grid"><article class="panel wide"><div class="panelhead"><h3>Priority assets</h3><span>Deterministic scoring</span></div><table><thead><tr><th>Asset</th><th>Environment</th><th>Status</th><th>Risk</th></tr></thead><tbody id="assets"><tr><td colspan="4">Load a scan to view assets.</td></tr></tbody></table></article><article class="panel"><div class="panelhead"><h3>Attack surface graph</h3><span>Observed relations</span></div><div id="graph" class="graph">No graph loaded</div></article><article class="panel"><div class="panelhead"><h3>Change intelligence</h3><span>Current vs prior scan</span></div><div id="diff">No history loaded</div></article><article class="panel wide"><div class="panelhead"><h3>Recon copilot</h3><span>Grounded in this scan</span></div><div class="copilot"><input id="question" value="What should I review first?"><button id="ask">Ask</button></div><div id="answer">Answers cite recorded assets and never claim confirmed vulnerabilities.</div></article></section></main><script src="/app.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Perimetryx</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="eyebrow">AUTHORIZED ATTACK SURFACE INTELLIGENCE</p>
+          <h1>Perimetryx <span>v2</span></h1>
+        </div>
+        <div id="health">● API connecting</div>
+      </header>
+
+      <section class="hero">
+        <h2>Evidence before assertion.</h2>
+        <p>
+          Passive CT discovery, DNS resolution, and root-page HTTP observation
+          for explicitly authorized scope only.
+        </p>
+      </section>
+
+      <section class="panel launch-panel">
+        <div class="panelhead">
+          <h3>Start an authorized scan</h3>
+          <span>Scope is enforced before every request</span>
+        </div>
+        <form id="scanForm" class="scan-form">
+          <label
+            >Root domain<input
+              id="rootDomain"
+              placeholder="example.com"
+              required
+          /></label>
+          <label
+            >Authorization<select id="authorization">
+              <option value="owned_asset">Owned asset</option>
+              <option value="bug_bounty_program">Bug bounty program</option>
+              <option value="signed_engagement_letter">
+                Signed engagement
+              </option>
+            </select></label
+          >
+          <label
+            >Allowed domains<textarea id="allowedDomains" required>
+example.com
+*.example.com</textarea
+            >
+          </label>
+          <label
+            >Excluded domains<textarea
+              id="excludedDomains"
+              placeholder="payments.example.com"
+            ></textarea>
+          </label>
+          <label
+            >Requests / second<input
+              id="rate"
+              type="number"
+              min="0.1"
+              max="20"
+              step="0.1"
+              value="2"
+              required
+          /></label>
+          <label
+            >Concurrent connections<input
+              id="concurrent"
+              type="number"
+              min="1"
+              max="25"
+              value="5"
+              required
+          /></label>
+          <label class="check"
+            ><input id="dryRun" type="checkbox" checked /> Dry run only - makes
+            no network requests</label
+          >
+          <label class="check"
+            ><input id="confirmed" type="checkbox" /> I confirm this scope is
+            authorized</label
+          >
+          <button type="submit">Start scan</button>
+        </form>
+        <p class="form-note">
+          Live mode reads public certificate-transparency records, resolves
+          in-scope hosts, and requests only their `/` endpoint on ports 443/80.
+          It does not exploit, brute force, follow cross-domain redirects, or
+          scan arbitrary ports.
+        </p>
+      </section>
+
+      <section class="controls">
+        <label
+          >Existing scan ID
+          <input id="scanId" type="number" min="1" placeholder="e.g. 1"
+        /></label>
+        <button id="load">Load scan</button>
+        <span id="scanStatus"></span>
+      </section>
+      <p id="message" role="status"></p>
+
+      <section class="metrics" id="metrics">
+        <article><small>ASSETS</small><b>—</b></article>
+        <article><small>FINDINGS</small><b>—</b></article>
+        <article><small>HIGH RISK</small><b>—</b></article>
+        <article><small>NEW ASSETS</small><b>—</b></article>
+      </section>
+
+      <section class="grid">
+        <article class="panel wide">
+          <div class="panelhead">
+            <h3>Priority assets</h3>
+            <span>Deterministic scoring</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Asset</th>
+                <th>Environment</th>
+                <th>Status</th>
+                <th>Risk</th>
+              </tr>
+            </thead>
+            <tbody id="assets">
+              <tr>
+                <td colspan="4">Start or load a scan.</td>
+              </tr>
+            </tbody>
+          </table>
+        </article>
+        <article class="panel">
+          <div class="panelhead">
+            <h3>Attack surface graph</h3>
+            <span>Observed relations</span>
+          </div>
+          <div id="graph" class="graph">No graph loaded</div>
+        </article>
+        <article class="panel">
+          <div class="panelhead">
+            <h3>Change intelligence</h3>
+            <span>Current vs prior scan</span>
+          </div>
+          <div id="diff">No history loaded</div>
+        </article>
+        <article class="panel wide">
+          <div class="panelhead">
+            <h3>Recon copilot</h3>
+            <span>Grounded in this scan</span>
+          </div>
+          <div class="copilot">
+            <input id="question" value="What should I review first?" /><button
+              id="ask"
+            >
+              Ask
+            </button>
+          </div>
+          <div id="answer">
+            Configure a provider in `.env` and run a completed scan.
+          </div>
+        </article>
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>

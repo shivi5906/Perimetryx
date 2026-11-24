@@ -32,6 +32,14 @@ class DomainCreate(BaseModel):
 
 class ScanCreate(BaseModel):
     dry_run: bool = True
+    confirmed_authorization: bool = False
+
+    @field_validator("confirmed_authorization")
+    @classmethod
+    def require_confirmation_for_live_scans(cls, value, info):
+        if info.data.get("dry_run") is False and value is not True:
+            raise ValueError("Live scans require confirmed_authorization=true")
+        return value
 
 
 class AssetInput(BaseModel):

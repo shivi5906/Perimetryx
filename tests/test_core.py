@@ -1,3 +1,8 @@
+from fastapi.testclient import TestClient
+
+from app import store
+from app.analysis import classify_environment, findings_for_observation
+from app.main import app
 from app.schemas import ScopeConfig
 from app.scope_guard import allowed
 from app.scoring import score
@@ -25,3 +30,37 @@ def test_exclusions_win_over_allowed_patterns():
 def test_score_is_explainable_and_capped():
     total, band, breakdown = score([{"category": "dangling_cname_indicator"}] * 5, "staging")
     assert total == 100 and band == "critical" and breakdown["exposure"] == 150
+
+
+def test_observed_headers_and_environment_produce_deterministic_findings():
+    findings = findings_for_observation("staging.example.com", "https", 200, {})
+    categories = {finding["category"] for finding in findings}
+    assert classify_environment("staging.example.com") == "staging"
+    assert "staging_exposed" in categories
+    assert "missing_security_header" in categories
+
+
+def test_dry_run_completes_without_external_collection(tmp_path, monkeypatch):
+    monkeypatch.setattr(store, "DB_PATH", tmp_path / "perimetryx.db")
+    body = {
+        "root_domain": "demo.example.com",
+        "scope": {
+            "domain": "demo.example.com",
+            "authorization_basis": "owned_asset",
+            "allowed_domains": ["demo.example.com", "*.demo.example.com"],
+            "excluded": [],
+            "active_verification": False,
+            "max_requests_per_second": 2,
+            "max_concurrent_connections": 5,
+            "allowed_ports": [80, 443],
+            "user_agent": "Perimetryx/2.0 integration",
+        },
+    }
+    with TestClient(app) as client:
+        domain = client.post("/api/domains", json=body).json()
+        scan = client.post(
+            f"/api/domains/{domain['id']}/scans",
+            json={"dry_run": True, "confirmed_authorization": False},
+        ).json()
+        result = client.get(f"/api/scans/{scan['id']}").json()
+    assert result["status"] == "completed"
