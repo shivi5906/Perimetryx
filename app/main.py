@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .schemas import AssetInput, CopilotQuestion, DomainCreate, FindingInput, ScanCreate
+from .ai import provider
 from .scope_guard import allowed, normalize
 from .scoring import score
 from .store import db, dump, init, load, now, rows
@@ -144,12 +145,14 @@ def history_diff(scan_id: int):
     return {"from_scan_id": previous["id"] if previous else None, "to_scan_id": scan_id, "new_assets": sorted(current-before), "removed_assets": sorted(before-current), "persisted_assets": sorted(current & before)}
 
 @app.post("/api/scans/{scan_id}/copilot")
-def copilot(scan_id: int, body: CopilotQuestion):
+async def copilot(scan_id: int, body: CopilotQuestion):
     data = overview(scan_id); assets = data["assets"][:5]
     citations = [{"asset_id": a["id"], "hostname": a["hostname"], "score": a["total"] or 0} for a in assets]
     if not assets: return {"answer": "No assets have been recorded for this scan yet.", "citations": []}
-    answer = "Prioritize " + ", ".join(f"{a['hostname']} (risk {a['total'] or 0})" for a in assets[:3]) + ". This is deterministic prioritization from recorded findings; validate manually before reporting any issue."
-    return {"answer": answer, "citations": citations, "grounded": True, "model": "deterministic-v2"}
+    selected = provider()
+    try: answer = await selected.answer(body.question, citations)
+    except Exception as error: raise HTTPException(502, "Configured AI provider did not return an answer") from error
+    return {"answer": answer, "citations": citations, "grounded": True, "model": selected.name}
 
 STATIC = Path(__file__).parent.parent / "web"
 app.mount("/", StaticFiles(directory=STATIC, html=True), name="web")

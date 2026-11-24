@@ -7,6 +7,7 @@ Perimetryx is an authorized attack-surface intelligence platform. It makes evide
 - Web dashboard for asset priority, graph relations, history, and grounded copilot answers
 - FastAPI REST API with strict scope enforcement and audit events
 - Scan lifecycle, asset evidence, deterministic risk scoring, and historical diffs
+- Pluggable copilot providers: deterministic baseline, OpenAI, or local Ollama
 - SQLite development store with Postgres/Redis container services ready for the production migration
 
 ## Run locally
@@ -36,3 +37,5 @@ Use [scope.example.yaml](scope.example.yaml) as the required authorization and r
 ## Architecture
 
 The current delivery deliberately separates collection adapters from analysis. The dashboard is useful today with validated imported observations; any passive-source connector must pass the same scope guard, rate limits, and audit log before storing an asset. AI output does not calculate or override a risk score.
+
+Set `PERIMETRYX_AI_PROVIDER` to `openai` or `ollama` only after configuring its environment variables. Provider output is returned with the same asset citations used in the prompt.
