@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import os
 from abc import ABC, abstractmethod
-import httpx
 
+import httpx
 
 SYSTEM = """You are Perimetryx, an authorized security-analysis copilot. Answer only from the supplied evidence. Do not infer a vulnerability, recommend exploitation, or use the label Confirmed Vulnerability. State when manual verification is required. Include the cited asset hostnames in your answer."""
 

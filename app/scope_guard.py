@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from fnmatch import fnmatchcase
+
 from .schemas import ScopeConfig
 
 

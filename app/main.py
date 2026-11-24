@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-import json
-from datetime import datetime
 from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .schemas import AssetInput, CopilotQuestion, DomainCreate, FindingInput, ScanCreate
 from .ai import provider
+from .schemas import AssetInput, CopilotQuestion, DomainCreate, FindingInput, ScanCreate
 from .scope_guard import allowed, normalize
 from .scoring import score
 from .store import db, dump, init, load, now, rows

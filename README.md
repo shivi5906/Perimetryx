@@ -13,11 +13,27 @@ Perimetryx is an authorized attack-surface intelligence platform. It makes evide
 ## Run locally
 
 ```powershell
-python -m pip install -r requirements.txt
-python -m uvicorn app.main:app --reload
+winget install --id=astral-sh.uv -e
+# Restart PowerShell once installation completes.
+uv sync --all-groups
+./scripts/dev.ps1
 ```
 
 Open `http://localhost:8000`, then select **Load safe demo**. It only writes local demo data; it sends no network requests.
+
+## Development with uv
+
+`pyproject.toml` is the only dependency source. `uv sync` creates the isolated `.venv` and `uv.lock`; commit the lock file after the first sync for reproducible installs.
+
+```powershell
+# Add a runtime or development dependency
+uv add dnspython
+uv add --group dev pytest-cov
+
+# Run the main tasks without manually activating .venv
+./scripts/dev.ps1
+./scripts/check.ps1
+```
 
 ## Safety model
 
