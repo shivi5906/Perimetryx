@@ -1,0 +1,10 @@
+scope:
+  domain: example.com
+  authorization_basis: owned_asset
+  allowed_domains: [example.com, "*.example.com"]
+  excluded: [payments.example.com, "*.internal.example.com"]
+  active_verification: false
+  max_requests_per_second: 2
+  max_concurrent_connections: 5
+  allowed_ports: [80, 443]
+  user_agent: "Perimetryx/2.0 (+security@example.com; authorized-recon)"
