@@ -1,4 +1,5 @@
 """Strict scope enforcement. All network-capable code must call this first."""
+
 from __future__ import annotations
 
 from fnmatch import fnmatchcase

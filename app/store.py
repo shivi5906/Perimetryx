@@ -21,15 +21,35 @@ CREATE TABLE IF NOT EXISTS risk_scores (scan_id INTEGER REFERENCES scans(id), as
 CREATE TABLE IF NOT EXISTS audit_events (id INTEGER PRIMARY KEY, scan_id INTEGER REFERENCES scans(id), at TEXT NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL, result TEXT NOT NULL);
 """
 
-def now() -> str: return datetime.now(timezone.utc).isoformat()
+
+def now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
 @contextmanager
 def db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
-    try: yield conn; conn.commit()
-    finally: conn.close()
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        yield conn
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def init():
-    with db() as conn: conn.executescript(SCHEMA)
-def rows(cursor): return [dict(row) for row in cursor.fetchall()]
-def dump(value): return json.dumps(value, separators=(",", ":"))
-def load(value): return json.loads(value) if value else {}
+    with db() as conn:
+        conn.executescript(SCHEMA)
+
+
+def rows(cursor):
+    return [dict(row) for row in cursor.fetchall()]
+
+
+def dump(value):
+    return json.dumps(value, separators=(",", ":"))
+
+
+def load(value):
+    return json.loads(value) if value else {}
