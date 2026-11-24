@@ -1,7 +1,11 @@
+import argparse
+
 from fastapi.testclient import TestClient
 
 from app import store
 from app.analysis import classify_environment, findings_for_observation
+from app.cli import create_scope
+from app.guidance import priority_plan
 from app.main import app
 from app.schemas import ScopeConfig
 from app.scope_guard import allowed
@@ -64,3 +68,34 @@ def test_dry_run_completes_without_external_collection(tmp_path, monkeypatch):
         ).json()
         result = client.get(f"/api/scans/{scan['id']}").json()
     assert result["status"] == "completed"
+
+
+def test_cli_scope_defaults_to_exact_domain_only(tmp_path):
+    output = tmp_path / "scope.yaml"
+    result = create_scope(
+        argparse.Namespace(
+            domain="demo.example.com",
+            authorization="owned_asset",
+            output=str(output),
+            force=False,
+        )
+    )
+    assert result == 0
+    assert "*.demo.example.com" not in output.read_text(encoding="utf-8")
+
+
+def test_priority_plan_provides_safe_checks():
+    plan = priority_plan(
+        [{"id": 1, "hostname": "staging.example.com", "total": 35}],
+        [
+            {
+                "asset_id": 1,
+                "category": "staging_exposed",
+                "classification": "Potential Risk",
+                "description": "Staging host responded.",
+                "evidence": {"status": 200},
+            }
+        ],
+    )
+    assert plan[0]["priority"] == "High"
+    assert "brute force" not in " ".join(plan[0]["safe_checks"]).lower()

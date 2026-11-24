@@ -36,6 +36,28 @@ uv add --group dev pytest-cov
 ./scripts/check.ps1
 ```
 
+## CLI workflow
+
+The CLI is the primary operator workflow. It writes a reviewable scope file first and refuses a live scan without explicit confirmation.
+
+```powershell
+# Create scope, then edit targets/exclusions against the current program brief.
+uv run python -m app init-scope --domain your-test-store.myshopify.com --authorization bug_bounty_program
+
+# No network requests; validates scope and creates a scan record.
+uv run python -m app scan --scope scope.yaml --dry-run
+
+# Only after explicit program authorization.
+uv run python -m app scan --scope scope.yaml --confirm-authorization
+
+# Turn evidence into manual-review priorities and a responsible reporting roadmap.
+uv run python -m app prioritize --scan 1
+uv run python -m app roadmap --scan 1
+uv run python -m app export --scan 1 --output report.md
+```
+
+The roadmap identifies safe next checks and evidence requirements. It does not perform exploitation, credential attacks, account enumeration, path fuzzing, or submit reports automatically.
+
 ## Safety model
 
 Every target is validated against an explicit scope before it can enter a scan. This implementation does not include exploitation, brute force, arbitrary port scanning, or vulnerability confirmation. Findings are limited to `Observed`, `Potential Risk`, and `Needs Manual Verification`.
