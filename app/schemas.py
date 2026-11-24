@@ -42,6 +42,11 @@ class ScanCreate(BaseModel):
         return value
 
 
+class QuickScanRequest(BaseModel):
+    domain: str
+    dry_run: bool = False
+
+
 class AssetInput(BaseModel):
     hostname: str
     source: str = "manual"
@@ -58,6 +63,34 @@ class FindingInput(BaseModel):
     classification: Literal["Observed", "Potential Risk", "Needs Manual Verification"]
     description: str
     evidence: dict = {}
+    severity: Literal["critical", "high", "medium", "low", "info"] = "medium"
+    mitre_technique: str = ""
+    cwe_id: str = ""
+    cvss_score: float = 0.0
+
+
+class DNSRecordInput(BaseModel):
+    record_type: str
+    value: str
+    ttl: int | None = None
+
+
+class TechnologyInput(BaseModel):
+    name: str
+    category: str
+    version: str | None = None
+    confidence: int = 100
+
+
+class CertificateInput(BaseModel):
+    issuer: str | None = None
+    subject: str | None = None
+    sans: list[str] = []
+    not_before: str | None = None
+    not_after: str | None = None
+    days_left: int | None = None
+    expired: bool = False
+    self_signed: bool = False
 
 
 class CopilotQuestion(BaseModel):

@@ -1,0 +1,13 @@
+scope:
+  domain: test1-uegkdmky.myshopify.com
+  authorization_basis: bug_bounty_program
+  allowed_domains:
+  - test1-uegkdmky.myshopify.com
+  excluded: []
+  active_verification: false
+  max_requests_per_second: 2
+  max_concurrent_connections: 5
+  allowed_ports:
+  - 80
+  - 443
+  user_agent: Perimetryx/2.0 (+https://authorized-recon.local; security-audit)

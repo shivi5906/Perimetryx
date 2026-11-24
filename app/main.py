@@ -8,13 +8,20 @@ from fastapi.staticfiles import StaticFiles
 
 from .ai import provider
 from .analysis import findings_for_observation
+from .diff import calculate_scan_diff
+from .dns_engine import evaluate_dns_hygiene
+from .fingerprint import detect_sensitive_surfaces
+from .graph import build_attack_surface_graph
 from .pipeline import Observation, collect
-from .schemas import AssetInput, CopilotQuestion, DomainCreate, FindingInput, ScanCreate, ScopeConfig
+from .reporting import generate_html_report, generate_markdown_report
+from .schemas import AssetInput, CopilotQuestion, DomainCreate, FindingInput, QuickScanRequest, ScanCreate, ScopeConfig
 from .scope_guard import allowed, normalize
 from .scoring import score
 from .services import add_finding as store_finding
 from .services import audit, finish_scan, ingest_observation
 from .store import db, dump, init, load, now, rows
+from .takeover_signatures import check_takeover_risk
+from .tls_engine import evaluate_tls_hygiene
 
 app = FastAPI(title="Perimetryx API", version="2.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:8000"], allow_methods=["*"], allow_headers=["*"])
@@ -104,13 +111,62 @@ async def execute_scan(scan_id: int) -> None:
         for observation in observations:
             asset_id = ingest_observation(scan_id, domain["id"], observation)
             audit(scan_id, "asset_recorded", observation.hostname, observation.source)
+
+            # 1. HTTP header & environment findings
             for finding in findings_for_observation(
                 observation.hostname,
                 observation.scheme,
                 observation.status_code,
                 observation.headers,
+                getattr(observation, "body_preview", None),
             ):
                 store_finding(scan_id, asset_id, finding)
+
+            # 2. DNS posture findings
+            if getattr(observation, "dns_profile", None):
+                is_root = observation.hostname == domain["root_domain"]
+                for finding in evaluate_dns_hygiene(observation.dns_profile, is_root):
+                    store_finding(scan_id, asset_id, finding)
+
+            # 3. TLS certificate & protocol posture
+            if getattr(observation, "tls_profile", None):
+                for finding in evaluate_tls_hygiene(observation.tls_profile):
+                    store_finding(scan_id, asset_id, finding)
+
+            # 4. Sensitive surfaces & admin / API leaks
+            for finding in detect_sensitive_surfaces(
+                observation.hostname,
+                observation.title,
+                getattr(observation, "technologies", []),
+                observation.status_code,
+            ):
+                store_finding(scan_id, asset_id, finding)
+
+            # 5. Dangling CNAME / Subdomain Takeover check
+            cname_candidate = observation.cname or (
+                observation.dns_profile.cname_records[0]
+                if (getattr(observation, "dns_profile", None) and observation.dns_profile.cname_records)
+                else None
+            )
+            if cname_candidate:
+                is_nx = getattr(observation.dns_profile, "is_nxdomain", False) if observation.dns_profile else False
+                takeover = check_takeover_risk(cname_candidate, getattr(observation, "body_preview", ""), is_nx)
+                if takeover:
+                    store_finding(
+                        scan_id,
+                        asset_id,
+                        {
+                            "rule_id": "TAKEOVER-001",
+                            "category": "dangling_cname_indicator",
+                            "classification": "Potential Risk" if takeover["confidence"] == "medium" else "Confirmed Vulnerability",
+                            "severity": takeover["severity"],
+                            "mitre_technique": "T1584",
+                            "cwe_id": "CWE-284",
+                            "cvss_score": 8.5 if takeover["severity"] == "critical" else 7.1,
+                            "description": takeover["reason"],
+                            "evidence": {"hostname": observation.hostname, "cname": cname_candidate, "service": takeover["service"]},
+                        },
+                    )
         stats = finish_scan(scan_id, "completed")
         audit(scan_id, "scan_completed", domain["root_domain"], dump(stats))
     except Exception as error:
@@ -120,7 +176,7 @@ async def execute_scan(scan_id: int) -> None:
 
 
 @app.post("/api/domains/{domain_id}/scans", status_code=201)
-def create_scan(domain_id: int, body: ScanCreate, background_tasks: BackgroundTasks):
+async def create_scan(domain_id: int, body: ScanCreate, background_tasks: BackgroundTasks):
     domain = domain_or_404(domain_id)
     with db() as conn:
         cursor = conn.execute(
@@ -134,6 +190,51 @@ def create_scan(domain_id: int, body: ScanCreate, background_tasks: BackgroundTa
         )
     background_tasks.add_task(execute_scan, scan_id)
     return {"id": scan_id, "status": "queued", "dry_run": body.dry_run}
+
+
+@app.post("/api/quick-scan", status_code=201)
+async def quick_scan(body: QuickScanRequest, background_tasks: BackgroundTasks):
+    raw = body.domain.strip().lower()
+    if raw.startswith("https://"):
+        raw = raw[8:]
+    if raw.startswith("http://"):
+        raw = raw[7:]
+    clean_target = raw.split("/")[0].rstrip(".")
+
+    scope = ScopeConfig(
+        domain=clean_target,
+        authorization_basis="owned_asset",
+        allowed_domains=[clean_target, f"*.{clean_target}"],
+        excluded=[],
+        active_verification=False,
+        max_requests_per_second=2.0,
+        max_concurrent_connections=5,
+        allowed_ports=[80, 443],
+        user_agent="Perimetryx/2.0 (+authorized-assessment; security-audit)",
+    )
+
+    with db() as conn:
+        row = conn.execute("SELECT id FROM domains WHERE root_domain = ?", (clean_target,)).fetchone()
+        if row:
+            domain_id = row["id"]
+        else:
+            domain_id = conn.execute(
+                "INSERT INTO domains(root_domain, scope_json, created_at) VALUES (?, ?, ?)",
+                (clean_target, dump(scope.model_dump()), now()),
+            ).lastrowid
+
+        cursor = conn.execute(
+            "INSERT INTO scans(domain_id, status, dry_run, started_at) VALUES (?, 'queued', ?, ?)",
+            (domain_id, body.dry_run, now()),
+        )
+        scan_id = cursor.lastrowid
+        conn.execute(
+            "INSERT INTO audit_events(scan_id, at, action, target, result) VALUES (?, ?, 'quick_scan_started', ?, ?)",
+            (scan_id, now(), clean_target, "dry-run" if body.dry_run else "authorized"),
+        )
+
+    background_tasks.add_task(execute_scan, scan_id)
+    return {"scan_id": scan_id, "domain": clean_target, "status": "queued", "dry_run": body.dry_run}
 
 
 @app.get("/api/scans/{scan_id}")
@@ -343,6 +444,29 @@ async def copilot(scan_id: int, body: CopilotQuestion):
     except Exception as error:
         raise HTTPException(502, "Configured AI provider did not return an answer") from error
     return {"answer": answer, "citations": citations, "grounded": True, "model": selected.name}
+
+
+@app.get("/api/scans/{scan_id}/graph")
+def get_scan_graph(scan_id: int):
+    scan_or_404(scan_id)
+    return build_attack_surface_graph(scan_id)
+
+
+@app.get("/api/scans/{scan_id}/diff/{scan_b_id}")
+def get_scan_comparative_diff(scan_id: int, scan_b_id: int):
+    scan_or_404(scan_id)
+    scan_or_404(scan_b_id)
+    return calculate_scan_diff(scan_id, scan_b_id)
+
+
+@app.get("/api/scans/{scan_id}/report")
+def get_scan_report(scan_id: int, format: str = "html"):
+    scan_or_404(scan_id)
+    if format == "markdown":
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse(generate_markdown_report(scan_id))
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(generate_html_report(scan_id))
 
 
 STATIC = Path(__file__).parent.parent / "web"

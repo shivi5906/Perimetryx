@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Perimetryx Audit: example.com</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #111827;
+      --border: #1f2937;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --crit: #ef4444;
+      --high: #f97316;
+      --med: #eab308;
+      --low: #3b82f6;
+      --accent: #06b6d4;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      margin: 0;
+      padding: 30px;
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    header { border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 30px; }
+    h1 { margin: 0 0 10px 0; color: var(--accent); }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
+    .stat-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+    .stat-val { font-size: 2rem; font-weight: bold; margin-bottom: 5px; }
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
+    .badge-critical { background: rgba(239, 68, 68, 0.2); color: var(--crit); border: 1px solid var(--crit); }
+    .badge-high { background: rgba(249, 115, 22, 0.2); color: var(--high); border: 1px solid var(--high); }
+    .badge-medium { background: rgba(234, 179, 8, 0.2); color: var(--med); border: 1px solid var(--med); }
+    .badge-low { background: rgba(59, 130, 246, 0.2); color: var(--low); border: 1px solid var(--low); }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 30px; background: var(--card-bg); border-radius: 8px; overflow: hidden; }
+    th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { background: #1f2937; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; }
+    .finding-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 15px; }
+    code { background: #1f2937; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+    pre { background: #030712; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Perimetryx Attack Surface Audit Report</h1>
+    <div>Target: <strong>example.com</strong> | Generated: 2026-11-24 14:31:54 UTC</div>
+  </header>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-val" style="color: var(--accent);">1</div>
+      <div style="color: var(--text-muted);">Discovered Assets</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" style="color: var(--crit);">0</div>
+      <div style="color: var(--text-muted);">Critical Findings</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" style="color: var(--high);">0</div>
+      <div style="color: var(--text-muted);">High Severity</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" style="color: var(--med);">0</div>
+      <div style="color: var(--text-muted);">Medium Severity</div>
+    </div>
+  </div>
+
+  <h2>External Attack Surface Inventory</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Hostname</th>
+        <th>Environment</th>
+        <th>HTTP Status</th>
+        <th>Risk Score</th>
+        <th>Severity Band</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>example.com</code></td>
+        <td>unknown</td>
+        <td>None</td>
+        <td><strong>0/100</strong></td>
+        <td><span class="badge badge-low">low</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Security Findings & Defense-in-Depth Analysis</h2>
+</div>
+</body>
+</html>

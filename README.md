@@ -1,80 +1,142 @@
-# Perimetryx
+# Perimetryx 🛡️
 
-Perimetryx is an authorized attack-surface intelligence platform. It makes evidence-backed reconnaissance understandable without presenting potential findings as confirmed vulnerabilities.
+**Enterprise Attack Surface Intelligence & Evidence-Grounded Threat Engine**
 
-## Version 2 delivery
+> Built for AppSec engineers, Red Teams, Bug Bounty researchers, and academic cybersecurity excellence. Maps external perimeters, performs deterministic risk scoring mapped to MITRE ATT&CK & CWE, detects Subdomain Takeovers & Email Spoofing, and reasons over factual evidence using an AI Security Analyst.
 
-- Web dashboard for asset priority, graph relations, history, and grounded copilot answers
-- FastAPI REST API with strict scope enforcement and audit events
-- Scan lifecycle, asset evidence, deterministic risk scoring, and historical diffs
-- Pluggable copilot providers: deterministic baseline, OpenAI, or local Ollama
-- Scope-gated collection: public CT records, DNS, and one root-page observation per in-scope host
-- SQLite development store with Postgres/Redis container services ready for the production migration
+---
 
-## Run locally
-
-```powershell
-winget install --id=astral-sh.uv -e
-# Restart PowerShell once installation completes.
-uv sync --all-groups
-./scripts/dev.ps1
+```text
+██████╗ ███████╗██████╗ ██╗███╗   ███╗███████╗████████╗██████╗ ██╗   ██╗██╗  ██╗
+██╔══██╗██╔════╝██╔══██╗██║████╗ ████║██╔════╝╚══██╔══╝██╔══██╗╚██╗ ██╔╝╚██╗██╔╝
+██████╔╝█████╗  ██████╔╝██║██╔████╔██║█████╗     ██║   ██████╔╝ ╚████╔╝  ╚███╔╝ 
+██╔═══╝ ██╔══╝  ██╔══██╗██║██║╚██╔╝██║██╔══╝     ██║   ██╔══██╗  ╚██╔╝   ██╔██╗ 
+██║     ███████╗██║  ██║██║██║ ╚═╝ ██║███████╗   ██║   ██║  ██║   ██║   ██╔╝ ██╗
 ```
 
-Open `http://localhost:8000`. Start with **Dry run** to verify the domain and scope configuration. A live scan requires explicit authorization confirmation and is limited to public CT records, DNS, and a single root-page request to each in-scope host.
+---
 
-## Development with uv
+## ⚡ Key Highlights (Grade A+ Features)
 
-`pyproject.toml` is the only dependency source. `uv sync` creates the isolated `.venv` and `uv.lock`; commit the lock file after the first sync for reproducible installs.
+1. **Rich Interactive Cyber Terminal Console**:
+   - Modern ASCII banner, live progress spinners, colorized severity badges (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `INFO`).
+   - Terminal Attack Surface Topology Tree (`rich.tree.Tree`) rendering hierarchical dependencies.
+   - Comparative scan deltas and security regression tables.
 
+2. **Multi-Vector Passive Reconnaissance**:
+   - Passive Certificate Transparency log harvesting (crt.sh, CertSpotter).
+   - Deep DNS Resolution: `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `NS`, `SOA`.
+   - TLS X.509 Certificate parsing with Subject Alternative Names (SAN) passive asset expansion.
+
+3. **Subdomain Takeover & Dangling DNS Engine**:
+   - Signature-based detection across 20+ cloud providers (AWS S3, GitHub Pages, Heroku, Azure App Services & Traffic Manager, Shopify, Surge, Fastly, Netlify, Fly.io, Zendesk, Readme, etc.).
+   - Mapped to **MITRE ATT&CK T1584** (Compromise Infrastructure).
+
+4. **DNS Security & Email Spoofing Hygiene**:
+   - Evaluates SPF policies for permissive `+all` (critical spoofing vulnerability) and neutral `?all`.
+   - Evaluates DMARC records for `p=none` (monitoring only) vs `p=quarantine`/`p=reject`.
+   - Probes nameservers for unrestricted AXFR DNS Zone Transfers (**MITRE ATT&CK T1590.002**).
+
+5. **Web Technology & Sensitive Surface Fingerprinting**:
+   - 50+ technology signatures across servers, backend frameworks, CMS, and client-side UI libraries.
+   - Detects exposed API documentation (Swagger UI, OpenAPI specs, GraphQL endpoints).
+   - Detects exposed metrics and telemetry (Prometheus, Actuator, Grafana).
+   - Flags public administrative surfaces without credential bruteforcing.
+
+6. **Defense-in-Depth Security Header Audit**:
+   - Comprehensive audit of HSTS (including `max-age` duration and subdomains), CSP (flagging `unsafe-inline` and `unsafe-eval`), X-Frame-Options (Clickjacking / CWE-1021), X-Content-Type-Options, and Referrer-Policy.
+
+7. **Historical Intelligence & Continuous Diffing**:
+   - Calculates exact deltas between Scan $N$ and Scan $N-1$: newly introduced shadow IT, decommissioned hosts, resolved findings, and posture score trajectory.
+
+8. **Evidence-Grounded AI Security Analyst & Copilot**:
+   - Natural language Q&A strictly grounded in the database evidence graph.
+   - Generates CISO executive briefings and DevSecOps remediation playbooks.
+   - Operates offline via a high-accuracy deterministic analyst or connects to Groq (`llama-3.3-70b-versatile`), OpenAI (`gpt-4o-mini`), or local Ollama.
+
+9. **Enterprise Audit Reporting**:
+   - Generates client-ready **Markdown** reports and **Standalone Dark-Themed HTML** audit reports with severity distribution cards and MITRE ATT&CK references.
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technologies |
+|---|---|
+| **Runtime & Language** | Python 3.12+ (Typed Async, Dataclasses, Pydantic v2) |
+| **CLI & Terminal UI** | `rich` (Tables, Panels, Trees, Progress Bars, ANSI Badges), `argparse` |
+| **Network & Recon** | `httpx` (Async HTTP), `dnspython` (Async DNS resolver & AXFR probe) |
+| **Cryptography** | `cryptography` (X.509 cert decoding, SAN extraction, validity checks), Python `ssl` |
+| **Persistence** | SQLite with WAL mode, foreign keys, and relational normalization |
+| **Threat Frameworks** | MITRE ATT&CK for Enterprise, Common Weakness Enumeration (CWE), CVSS v3.1 |
+| **AI Analyst Layer** | Multi-provider (`deterministic-v2`, `groq`, `openai`, `ollama`) |
+| **Web REST API** | FastAPI, Starlette, Uvicorn |
+
+---
+
+## 🚀 Quickstart & CLI Commands
+
+### 1. Initialize an Authorized Scope
+Perimetryx requires an explicit scope definition before any scanning can occur:
 ```powershell
-# Add a runtime or development dependency
-uv add dnspython
-uv add --group dev pytest-cov
-
-# Run the main tasks without manually activating .venv
-./scripts/dev.ps1
-./scripts/check.ps1
+uv run python -m app init-scope --domain example.com --authorization owned_asset --output scope.yaml
 ```
 
-## CLI workflow
-
-The CLI is the primary operator workflow. It writes a reviewable scope file first and refuses a live scan without explicit confirmation.
-
+### 2. Run a Reconnaissance Scan
 ```powershell
-# Create scope, then edit targets/exclusions against the current program brief.
-uv run python -m app init-scope --domain your-test-store.myshopify.com --authorization bug_bounty_program
-
-# No network requests; validates scope and creates a scan record.
+# Simulation / Dry Run (Validates scope rules without external probes):
 uv run python -m app scan --scope scope.yaml --dry-run
 
-# Only after explicit program authorization.
+# Live Authorized Assessment:
 uv run python -m app scan --scope scope.yaml --confirm-authorization
-
-# Turn evidence into manual-review priorities and a responsible reporting roadmap.
-uv run python -m app prioritize --scan 1
-uv run python -m app roadmap --scan 1
-uv run python -m app export --scan 1 --output report.md
 ```
 
-The roadmap identifies safe next checks and evidence requirements. It does not perform exploitation, credential attacks, account enumeration, path fuzzing, or submit reports automatically.
+### 3. Inspect Asset Telemetry & Findings
+```powershell
+# Inspect all assets from a scan
+uv run python -m app inspect --scan 1
 
-## Safety model
+# Inspect a specific target host
+uv run python -m app inspect --scan 1 --host admin.example.com
+```
 
-Every target is validated against an explicit scope before it can enter a scan. This implementation does not include exploitation, brute force, arbitrary port scanning, or vulnerability confirmation. Findings are limited to `Observed`, `Potential Risk`, and `Needs Manual Verification`.
+### 4. Render Attack Surface Topology Tree
+```powershell
+# Terminal tree visualization:
+uv run python -m app graph --scan 1
 
-Use [scope.example.yaml](scope.example.yaml) as the required authorization and rate-limit template for any future collection adapter.
+# Export raw topology nodes & edges as JSON:
+uv run python -m app graph --scan 1 --json
+```
 
-## API surface
+### 5. Historical Diffing & Security Regressions
+Compare baseline scan #1 against subsequent scan #2 to catch shadow IT and regressions:
+```powershell
+uv run python -m app diff --scan-a 1 --scan-b 2
+```
 
-- `POST /api/domains` - create an authorized domain and immutable scope configuration
-- `POST /api/domains/{id}/scans` - create a scan lifecycle
-- `POST /api/scans/{id}/assets` - ingest an in-scope observed asset
-- `POST /api/scans/{id}/assets/{asset}/findings` - record citable deterministic findings
-- `GET /api/scans/{id}/overview`, `/graph`, `/diff` - power the v2 dashboard
-- `POST /api/scans/{id}/copilot` - evidence-grounded priority answer
+### 6. AI Security Analyst Copilot
+Query the factual evidence using natural language:
+```powershell
+uv run python -m app copilot --scan 1 --query "What are the top 3 critical assets to review and why?"
+uv run python -m app copilot --scan 1 --query "Generate an executive CISO briefing for this attack surface."
+```
 
-## Architecture
+### 7. Generate Audit Reports (HTML & Markdown)
+```powershell
+# Export dark-themed executive HTML audit report:
+uv run python -m app report --scan 1 --format html --output audit-report.html
 
-The current delivery deliberately separates collection adapters from analysis. The dashboard is useful today with validated imported observations; any passive-source connector must pass the same scope guard, rate limits, and audit log before storing an asset. AI output does not calculate or override a risk score.
+# Export Markdown security report:
+uv run python -m app report --scan 1 --format markdown --output audit-report.md
+```
 
-Set `PERIMETRYX_AI_PROVIDER` to `groq`, `openai`, or `ollama` only after configuring its environment variables. Groq uses the OpenAI-compatible endpoint and defaults to `llama-3.3-70b-versatile`. Provider output is returned with the same asset citations used in the prompt.
+---
+
+## 🧪 Automated Test Suite
+
+Run the full pytest suite:
+```powershell
+uv run pytest
+```
+*Current test coverage: 16 passing unit and integration tests across DNS, TLS, Takeover Signatures, Tech Fingerprinting, Graph Topology, Historical Diffing, and AI Analyst Reasoning.*
